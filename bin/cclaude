@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR=${0:A:h}
 REPO_ROOT=${SCRIPT_DIR:h}
 DEFAULT_TEMPLATE_DIR="$REPO_ROOT/templates"
-INSTALLED_TEMPLATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/stateful-ai-workflow/templates"
+INSTALLED_TEMPLATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/chronora/templates"
 PROJECT_ROOT=$(pwd)
 CLAUDE_DIR="$PROJECT_ROOT/.claude"
 SESSIONS_DIR="$CLAUDE_DIR/sessions"

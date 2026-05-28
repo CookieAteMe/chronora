@@ -2,7 +2,7 @@
 
 ## Overview
 
-Stateful AI Workflow is a file-based wrapper around Claude Code.
+Chronora is a file-based continuity layer around a coding frontend such as Claude Code.
 
 The system has one goal: preserve durable project context across sessions without relying on hidden chat history or external retrieval systems.
 

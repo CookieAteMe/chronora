@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR=${0:A:h}
 TARGET_DIR="$HOME/bin"
 TARGET_SCRIPT="$TARGET_DIR/cclaude"
-SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/stateful-ai-workflow"
+SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/chronora"
 TEMPLATE_DIR="$SHARE_DIR/templates"
 
 mkdir -p "$TARGET_DIR" "$TEMPLATE_DIR"
@@ -27,4 +27,4 @@ fi
 
 print ""
 print "Installation complete."
-print "Run 'cclaude' from a project root to start a stateful Claude session."
+print "Run 'cclaude' from a project root to start a Chronora session."

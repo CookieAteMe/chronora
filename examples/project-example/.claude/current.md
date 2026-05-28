@@ -2,7 +2,7 @@
 
 ## Project Status
 
-Prototype example project for the Stateful AI Workflow repository.
+Prototype example project for the Chronora repository.
 
 ## Architecture
 
