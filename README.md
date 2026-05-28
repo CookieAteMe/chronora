@@ -1,48 +1,62 @@
 # Chronora
 
-Persistent context and session continuity workflow for AI coding tools.
+Persistent context and continuity workflow for AI coding tools.
 
 > Coding agents need deterministic state, not probabilistic recall.
 
-[中文文档](README.zh-CN.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Example](examples/basic-project/README.md)
+[中文文档](README.zh-CN.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Architecture](docs/architecture.md) · [Example](examples/basic-project/README.md)
 
-Chronora is v0.1 infrastructure for long-running coding sessions.
+Chronora is a Claude-first continuity layer for long-running AI coding workflows.
 
-It gives AI coding tools a deterministic continuity layer built from ordinary project files: a canonical `current.md`, project-local agent instructions, and an append-only session archive. The goal is not to create a smarter chat wrapper. The goal is to make project state explicit, inspectable, editable, and durable.
+It keeps persistent project context in ordinary files so coding agents can resume work from explicit state instead of reconstructing context from chat history. The architecture is AI-tool agnostic; the current v0.1 implementation is fully wired for Claude Code.
 
 ## Why Chronora
 
-Chat history is useful as execution trace, but it is a poor system of record for software work.
+Chat history is not the same thing as project state.
 
-In short-lived tasks, conversational context is often enough. In real repositories, it breaks down quickly:
+In real development workflows, long-running sessions drift:
 
-- architectural decisions get re-litigated every session
-- unresolved blockers disappear into token history
-- partially completed work gets rediscovered instead of resumed
-- current truth and historical reasoning blur together
-- the user becomes the only reliable memory system in the loop
+- architecture decisions get re-litigated
+- unresolved blockers disappear into transcript history
+- partial implementations get rediscovered instead of resumed
+- current truth gets mixed with old reasoning
+- the human operator becomes the only dependable memory layer
 
-Chronora addresses that by moving continuity out of hidden chat recall and into deterministic project state.
+Chronora treats continuity as a deterministic state problem:
 
-For coding agents, that means:
+- **explicit state** for what is true now
+- **append-only history** for what changed
+- **compact handoff structure** for what the next session should do
+- **workflow continuity** that survives context-window churn
 
-- **explicit project state** instead of inferred context
-- **`current.md` continuity** instead of prompt-by-prompt reconstruction
-- **append-only session history** that preserves how state changed over time
-- **summary-friendly state** without treating raw transcripts as source of truth
-- **deterministic continuity** across long-running coding sessions
+Deterministic continuity is more reliable than probabilistic recall when the work spans days, branches, and repeated agent sessions.
 
 ## What Chronora Provides
 
-Chronora keeps the runtime small on purpose. The v0.1 repository ships a focused workflow layer:
+Chronora v0.1 ships a deliberately small continuity layer:
 
-- `current.md` as the canonical mutable project state
+- `current.md` as canonical mutable project state
 - `CLAUDE.local.md` as project-local agent instructions
-- `.claude/sessions/` as an append-only session archive
-- `cclaude` as a bootstrap wrapper for Claude Code
+- `.claude/sessions/` as append-only state history
+- `cclaude` as the current Claude Code entrypoint
 - templates and examples that make the workflow reproducible
 
-The current implementation is intentionally file-driven and shell-based. It does not introduce databases, vector stores, embeddings, or runtime orchestration layers.
+The implementation is intentionally file-driven and shell-based. It does not depend on databases, embeddings, vector memory, or a hidden orchestration service.
+
+## Support Status
+
+Current support:
+
+- Claude Code (fully supported)
+
+Planned integrations:
+
+- Codex CLI
+- OpenCode
+- Aider
+- Cursor agents
+
+These planned integrations are not shipped in v0.1. Chronora is Claude-first in implementation today, while keeping the continuity model general enough to extend beyond a single coding agent later.
 
 ## Installation
 
@@ -58,7 +72,7 @@ The installer:
 
 - copies `cclaude` to `~/bin`
 - installs default templates to `~/.local/share/chronora/templates`
-- ensures the installed wrapper is executable
+- ensures the installed entrypoint is executable
 - checks whether the Claude Code CLI is available
 - warns if `~/bin` is not currently in `PATH`
 
@@ -93,6 +107,8 @@ my-project/
 ### 2. Start a continuity-aware coding session
 
 `cclaude` bootstraps the local state, snapshots the before-state, and launches Claude Code in the project context.
+
+This is the only fully supported frontend path today.
 
 The expected session loop is:
 
@@ -197,14 +213,16 @@ your-project/
 └── CLAUDE.local.md -> .claude/CLAUDE.local.md
 ```
 
+The current on-disk layout is Claude-first, but the continuity model is meant to outlast a single frontend.
+
 ## Docs
 
-- [Workflow](docs/workflow.md) — how the session lifecycle works in practice
-- [current.md Guide](docs/current-md-guide.md) — what belongs in the canonical state file
-- [Session Archive](docs/session-archive.md) — how to read the append-only archive
-- [Philosophy](docs/philosophy.md) — the design rationale behind deterministic state
-- [Architecture](docs/architecture.md) — component overview and failure model
-- [Migration Guide](docs/migration.md) — how to move from an ad hoc workflow
+- [Workflow](docs/workflow.md) — the operating loop for long-running AI coding workflows
+- [current.md Guide](docs/current-md-guide.md) — what belongs in live project state
+- [Session Archive](docs/session-archive.md) — how to inspect append-only state history
+- [Philosophy](docs/philosophy.md) — why deterministic state beats probabilistic recall
+- [Architecture](docs/architecture.md) — continuity primitives, Claude-first entrypoint, and failure model
+- [Migration Guide](docs/migration.md) — how to move from ad hoc AI coding workflows
 
 ## Examples
 
@@ -217,40 +235,31 @@ Chronora is intentionally narrow in v0.1.
 
 It is currently:
 
-- persistent workflow infrastructure for Claude Code users
-- a deterministic state layer for long-running coding sessions
-- a file-based continuity mechanism built around `.claude/`
-- a serious shell workflow, not a full runtime platform
+- AI coding workflow continuity infrastructure
+- deterministic state for long-running development
+- Claude-first in implementation
+- AI-tool agnostic in architecture
+- local, file-based, and inspectable by default
 
 It is not yet:
 
-- a database-backed state engine
-- a vector-memory product
-- a multi-agent orchestrator
-- a generalized runtime for every coding frontend
-
-## Why Deterministic State Matters
-
-Chronora treats project continuity as a state management problem.
-
-That means the system distinguishes clearly between:
-
-- **history** — what happened
-- **current state** — what is true now
-- **future work** — what the next session should pick up
-
-This boundary is what makes long-running coding sessions stable. History remains valuable, but it does not replace source-of-truth state.
+- multi-frontend runtime support
+- a shipped summary layer
+- task orchestration across agents
+- a unified runtime for every coding tool
+- full AI workspace orchestration
 
 ## Roadmap
 
 Near-term directions for Chronora include:
 
-- better onboarding for new repositories
-- stronger `current.md` guidance and examples
-- better archive inspection ergonomics
-- more examples for different project shapes
-- additional adapters beyond the current Claude Code reference workflow
-- future-compatible state domains for summaries and task continuity
+- summary layer
+- task continuity
+- multi-agent adapters
+- unified runtime layer
+- AI workspace orchestration
+
+These roadmap items describe the direction of the project, not features already available in v0.1. The current production path remains Claude Code.
 
 ## License
 

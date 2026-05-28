@@ -51,7 +51,7 @@ Record the structure the next session must respect.
 Good examples:
 
 - `FastAPI backend with a single entry point in src/main.py.`
-- `The wrapper installs templates into ~/.local/share/chronora/templates.`
+- `The current entrypoint installs templates into ~/.local/share/chronora/templates.`
 
 Keep this focused on active architecture, not speculative future designs.
 
@@ -143,25 +143,25 @@ Do not update it for every debugging step. Update it when the state of the proje
 
 ## Project Status
 
-Chronora v0.1 README and onboarding polish is in progress.
+Chronora v0.1 README and positioning refactor is in progress.
 
 ## Architecture
 
-The project remains a small zsh-based wrapper around Claude Code with .claude/ as the continuity directory.
+The project currently uses a Claude-first entrypoint around `.claude/`, while positioning the continuity model as AI-tool agnostic.
 
 ## Active Problems
 
-Install flow does not yet check for the Claude Code CLI.
+No additional frontend adapters are implemented yet.
 
 ## Important Decisions
 
-Do not redesign the runtime or rename .claude/ in v0.1.
+Do not redesign the runtime or rename `.claude/` in v0.1.
 
 ## Next Steps
 
-1. Improve install.sh onboarding output.
-2. Add a realistic example project.
-3. Split deep philosophy into docs.
+1. Strengthen support docs around workflow continuity.
+2. Keep implementation claims aligned with actual frontend support.
+3. Expand adapters later without overstating compatibility.
 ```
 
 ## Related Docs

@@ -43,7 +43,7 @@ A snapshot of the project-local agent instructions after the session.
 
 Basic metadata about the run.
 
-The current wrapper writes:
+The current entrypoint writes:
 
 - `started_at`
 - `ended_at`
@@ -101,7 +101,7 @@ This distinction is intentional:
 
 Chronora v0.1 does not implement archive rotation.
 
-If your local session history grows too large, you can prune old archives manually in the target project. That cleanup should be a user decision, not an automatic mutation by the wrapper.
+If your local session history grows too large, you can prune old archives manually in the target project. That cleanup should be a user decision, not an automatic mutation by the current entrypoint.
 
 ## Related Docs
 

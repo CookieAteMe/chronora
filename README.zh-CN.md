@@ -1,48 +1,62 @@
 # Chronora
 
-面向 AI 编程工具的持久上下文与 session 连续性工作流。
+面向 AI 编程工具的持久上下文与连续性工作流。
 
 > Coding agents need deterministic state, not probabilistic recall.
 
-[English](README.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Example](examples/basic-project/README.md)
+[English](README.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Architecture](docs/architecture.md) · [Example](examples/basic-project/README.md)
 
-Chronora 是一个面向长期 coding session 的 v0.1 基础设施层。
+Chronora 是一个面向长期 AI coding workflow 的 Claude-first continuity layer。
 
-它用普通项目文件为 AI 编程工具提供一层确定性的连续性机制：以 `current.md` 作为当前项目真相，以项目本地指令文件约束 agent 行为，并用 append-only session archive 保留状态演化轨迹。目标不是做一个更花哨的聊天包装器，而是让项目状态变得显式、可检查、可编辑、可持续。
+它把持久 project context 放在普通项目文件里，让 coding agents 能从显式状态继续工作，而不是每次都从聊天记录里重新拼接上下文。它的架构是 AI-tool agnostic 的；当前 v0.1 的完整实现路径则只对 Claude Code fully supported。
 
 ## Why Chronora
 
-聊天记录可以作为执行痕迹，但它不适合做软件工程的主状态系统。
+聊天记录不等于项目状态。
 
-在一次性的小任务里，对话上下文通常够用；但在真实仓库中，它很快会失效：
+在真实开发工作流里，长时间运行的 coding session 很容易发生 context drift：
 
-- 架构决策会在每次新会话里被重新讨论
-- 尚未解决的阻塞会埋进 token 历史里
-- 未完成的工作会被重新发现，而不是被自然续接
-- 当前真相与历史推理会混在一起
-- 用户会被迫成为唯一可靠的长期记忆系统
+- 架构决策会被反复重谈
+- 未解决的阻塞会沉进 transcript 历史
+- 做到一半的实现会被重新发现，而不是自然续接
+- 当前真相和过去推理会混在一起
+- 人类操作员会被迫成为唯一可靠的长期记忆层
 
-Chronora 通过把连续性从隐藏的聊天召回里移出来，落到确定性的项目状态中，来解决这个问题。
+Chronora 把连续性当作一个确定性的状态问题来处理：
 
-对于 coding agents，这意味着：
+- 用 **explicit state** 表达现在什么是真的
+- 用 **append-only history** 记录发生了什么变化
+- 用 **compact handoff structure** 指明下一次 session 该接什么
+- 用 **workflow continuity** 抵抗 context window 带来的漂移
 
-- 用**显式项目状态**替代推测出来的上下文
-- 用 **`current.md` continuity** 替代每次从 prompt 重新拼装背景
-- 用 **append-only session history** 保留状态是如何变化的
-- 用 **summary-friendly state** 支持压缩，而不是把 transcript 当 source of truth
-- 用 **deterministic continuity** 支撑长期 coding session
+当工作跨越多天、多分支、以及多次 agent session 时，deterministic continuity 会比 probabilistic recall 更可靠。
 
 ## What Chronora Provides
 
-Chronora 在 v0.1 中刻意保持范围克制，只提供一个聚焦的工作流层：
+Chronora v0.1 刻意保持为一个很小的 continuity layer：
 
-- `current.md` 作为可变的 canonical project state
-- `CLAUDE.local.md` 作为项目本地 agent 指令
-- `.claude/sessions/` 作为 append-only session archive
-- `cclaude` 作为 Claude Code 的启动 wrapper
-- 可复用的模板与示例，帮助你复现实践方式
+- `current.md` 作为 canonical mutable project state
+- `CLAUDE.local.md` 作为项目本地 agent instructions
+- `.claude/sessions/` 作为 append-only state history
+- `cclaude` 作为当前的 Claude Code entrypoint
+- 可复用的模板与示例，帮助你稳定复现这套 workflow
 
-当前实现有意保持为 file-driven、shell-based。它不会引入数据库、vector store、embeddings，也不会引入新的 runtime orchestration 层。
+当前实现有意保持为 file-driven、shell-based。它不依赖数据库、embeddings、vector memory，也不依赖隐藏式 orchestration service。
+
+## Support Status
+
+Current support:
+
+- Claude Code (fully supported)
+
+Planned integrations:
+
+- Codex CLI
+- OpenCode
+- Aider
+- Cursor agents
+
+这些 planned integrations 在 v0.1 里都还没有 shipped。Chronora 今天在实现上是 Claude-first，但 continuity model 本身被设计成可以在未来扩展到单一 coding agent 之外。
 
 ## Installation
 
@@ -58,7 +72,7 @@ cd chronora
 
 - 将 `cclaude` 复制到 `~/bin`
 - 将默认模板安装到 `~/.local/share/chronora/templates`
-- 确保安装后的 wrapper 具有可执行权限
+- 确保安装后的 entrypoint 具有可执行权限
 - 检查 Claude Code CLI 是否可用
 - 在 `~/bin` 不在 `PATH` 中时给出提示
 
@@ -94,13 +108,15 @@ my-project/
 
 `cclaude` 会先完成本地状态初始化、记录 before-state，然后在项目上下文中启动 Claude Code。
 
+这也是当前唯一 fully supported 的 frontend path。
+
 推荐的 session 循环是：
 
 1. 运行 `cclaude`
 2. 加载 `.claude/current.md`
 3. 延续既有架构与约束条件
 4. 当持久事实变化时更新 `current.md`
-5. 退出后让 Chronora 自动归档本次 session
+5. 退出并让 Chronora 自动归档本次 session
 
 ### 3. 把 `current.md` 当作 live project truth
 
@@ -146,7 +162,7 @@ Keep auth logic in one module until the API stabilizes.
 └── session.meta
 ```
 
-这让你可以轻量地追踪项目状态如何演化，而不需要把聊天记录当作主状态系统。
+这让你可以轻量追踪 project state 如何演化，而不必把聊天记录当成主状态系统。
 
 ### 5. 在下一次 session 里继续，而不是重新拼接上下文
 
@@ -197,14 +213,16 @@ your-project/
 └── CLAUDE.local.md -> .claude/CLAUDE.local.md
 ```
 
+当前磁盘布局是 Claude-first 的，但 continuity model 的目标不是被某一个 frontend 永久绑定。
+
 ## Docs
 
-- [Workflow](docs/workflow.md) — session lifecycle 在实际项目中如何运作
-- [current.md Guide](docs/current-md-guide.md) — canonical state file 应该写什么
-- [Session Archive](docs/session-archive.md) — 如何阅读 append-only archive
-- [Philosophy](docs/philosophy.md) — deterministic state 的设计理由
-- [Architecture](docs/architecture.md) — 组件概览与 failure model
-- [Migration Guide](docs/migration.md) — 如何从 ad hoc 工作流迁移过来
+- [Workflow](docs/workflow.md) — long-running AI coding workflow 的操作循环
+- [current.md Guide](docs/current-md-guide.md) — live project state 应该写什么
+- [Session Archive](docs/session-archive.md) — 如何检查 append-only state history
+- [Philosophy](docs/philosophy.md) — 为什么 deterministic state 比 probabilistic recall 更可靠
+- [Architecture](docs/architecture.md) — continuity primitives、Claude-first entrypoint 与 failure model
+- [Migration Guide](docs/migration.md) — 如何从 ad hoc AI coding workflows 迁移过来
 
 ## Examples
 
@@ -217,40 +235,31 @@ Chronora 在 v0.1 中有意保持范围收敛。
 
 它当前是：
 
-- 面向 Claude Code 用户的持久工作流基础设施
-- 面向 long-running coding sessions 的确定性状态层
-- 围绕 `.claude/` 构建的 file-based continuity mechanism
-- 一个严肃的 shell workflow，而不是完整 runtime 平台
+- AI coding workflow continuity infrastructure
+- 面向 long-running development 的 deterministic state layer
+- Claude-first in implementation
+- AI-tool agnostic in architecture
+- 默认 local、file-based、且可检查
 
 它目前还不是：
 
-- 数据库驱动的 state engine
-- vector-memory 产品
-- multi-agent orchestrator
-- 面向所有 coding frontend 的通用 runtime
-
-## Why Deterministic State Matters
-
-Chronora 把项目连续性视为一个状态管理问题。
-
-这意味着系统会明确区分：
-
-- **history** —— 发生过什么
-- **current state** —— 现在什么是真的
-- **future work** —— 下一次 session 应该接什么
-
-这条边界正是长期 coding session 能保持稳定的关键。历史很重要，但它不能替代 source-of-truth state。
+- multi-frontend runtime support
+- 已经交付的 summary layer
+- 跨 agent 的 task orchestration
+- 面向所有 coding tool 的 unified runtime
+- 完整的 AI workspace orchestration
 
 ## Roadmap
 
 Chronora 的近期方向包括：
 
-- 为新仓库提供更好的 onboarding
-- 提供更强的 `current.md` 指南与示例
-- 提升 archive 的检查体验
-- 为不同类型项目提供更多 examples
-- 在当前 Claude Code 参考工作流之外提供更多 adapter
-- 为 summaries 与 task continuity 预留兼容的状态域
+- summary layer
+- task continuity
+- multi-agent adapters
+- unified runtime layer
+- AI workspace orchestration
+
+这些 roadmap items 描述的是项目方向，不是 v0.1 已经可用的功能。当前唯一 production path 仍然是 Claude Code。
 
 ## License
 

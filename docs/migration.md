@@ -4,7 +4,7 @@
 
 Use this guide if you already have:
 
-- an ad hoc Claude wrapper
+- an ad hoc AI coding workflow launcher
 - a manually maintained `CLAUDE.local.md`
 - project notes stored in random chat transcripts
 - a memory process without a stable archive structure
@@ -13,7 +13,7 @@ Use this guide if you already have:
 
 The goal is not to preserve every historical conversation. The goal is to preserve the durable state that future sessions still need.
 
-## Step 1: Install the Wrapper
+## Step 1: Install the Current Entrypoint
 
 Install `cclaude` with:
 
@@ -34,7 +34,7 @@ Do not migrate full transcripts.
 
 ## Step 3: Move Project-Local Rules
 
-If you already have local Claude instructions, merge them into `.claude/CLAUDE.local.md`.
+If you already have local Claude-first instructions, merge them into `.claude/CLAUDE.local.md`.
 
 Keep the instructions focused on durable workflow behavior, especially the requirement to read and update `current.md`.
 
@@ -42,11 +42,11 @@ Keep the instructions focused on durable workflow behavior, especially the requi
 
 Do not move project-wide shared instructions unless you mean to change them.
 
-This wrapper is designed to coexist with a repository's normal `CLAUDE.md` without editing it.
+The current entrypoint is designed to coexist with a repository's normal `CLAUDE.md` without editing it.
 
 ## Step 5: Standardize Session Archives
 
-After migration, use `.claude/sessions/` as the only archive location for wrapper-managed session state.
+After migration, use `.claude/sessions/` as the only archive location for Chronora-managed session state.
 
 This makes historical state changes easy to inspect and compare.
 
@@ -66,4 +66,4 @@ After the migration:
 - [ ] `CLAUDE.local.md` symlink exists at the root
 - [ ] `.claude/sessions/` exists
 - [ ] durable project state copied into `current.md`
-- [ ] obsolete wrapper-specific notes removed
+- [ ] obsolete launcher-specific notes removed

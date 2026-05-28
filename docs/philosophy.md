@@ -4,9 +4,22 @@
 
 Chronora treats AI coding continuity as a state management problem.
 
-The core claim is simple: coding agents need deterministic state more than they need better probabilistic recall. Chat history is helpful, but it is not a reliable source of operational truth for long-running software projects.
+The central claim is simple: coding agents need deterministic state more than they need better probabilistic recall. Chat history is useful as execution trace, but it is not a reliable source of operational truth for long-running software work.
 
-## File-Driven State
+## Why Explicit State Matters
+
+Project state and chat history are not interchangeable.
+
+In short sessions, transcript memory may be enough. In real repositories, repeated agent sessions introduce drift:
+
+- current architectural constraints get buried in prior messages
+- unresolved blockers vanish into old context windows
+- partially completed work gets rediscovered instead of resumed
+- historical reasoning gets mistaken for live truth
+
+Chronora answers that with explicit, editable state files.
+
+## File-Driven Continuity
 
 Chronora keeps critical context in ordinary project files.
 
@@ -25,13 +38,13 @@ Chronora treats session archives as historical evidence.
 
 Every run captures before/after state so the project can preserve:
 
-- what the agent believed before the session
+- what the agent started from
 - what changed during the session
 - what state was left behind afterward
 
 The archive is not the source of truth. It is the record of how truth changed.
 
-## Explicit State Over Probabilistic Recall
+## Deterministic Continuity Over Probabilistic Recall
 
 In real software projects, the important questions are usually not:
 
@@ -52,11 +65,11 @@ Chronora answers them with explicit files rather than probabilistic recall.
 
 ## Why Not Vector Memory
 
-Vector memory is useful for large-scale fuzzy retrieval.
+Vector memory is useful for fuzzy retrieval across large information sets.
 
 Chronora is solving a different problem.
 
-For coding continuity, the system of record should be:
+For coding workflow continuity, the system of record should be:
 
 - deterministic rather than approximate
 - directly editable rather than retrieval-ranked
@@ -67,7 +80,7 @@ That is why Chronora does not depend on embeddings, databases, or retrieval infr
 
 ## Compression Without Confusing Truth
 
-Long-running AI workflows eventually need compression.
+Long-running AI coding workflows eventually need compression.
 
 Chronora draws a hard boundary between:
 
@@ -103,20 +116,20 @@ Historical evidence should accumulate rather than be overwritten.
 
 The workflow should be understandable from the repository, not from invisible runtime magic.
 
-### Stable scope
+### Claude-first, tool-agnostic architecture
 
-Chronora v0.1 deliberately remains a continuity layer. It does not try to become a full AI runtime platform.
+The first complete implementation path is Claude Code, but the continuity model is not conceptually limited to one coding agent.
 
 ## What This Means for v0.1
 
-Chronora is serious developer tooling, but intentionally narrow.
+Chronora is infrastructure for AI coding workflows, but intentionally narrow.
 
-The repository focuses on:
+The repository currently focuses on:
 
-- project-local persistent workflow
+- persistent project context
 - deterministic state via `.claude/current.md`
 - project-local instructions via `.claude/CLAUDE.local.md`
-- append-only session archives via `.claude/sessions/`
-- a small wrapper that keeps the workflow reproducible
+- append-only session history via `.claude/sessions/`
+- a Claude-first entrypoint that keeps the workflow reproducible
 
-That is enough to make long-running coding sessions materially more stable without redesigning the runtime around heavier abstractions.
+Planned integrations with other coding tools belong to the roadmap, not the current compatibility matrix.

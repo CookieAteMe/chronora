@@ -2,7 +2,7 @@
 
 ## Goal
 
-Use Chronora to keep project state explicit across long-running Claude Code sessions.
+Use Chronora to keep project state explicit across long-running AI coding sessions.
 
 This workflow is intentionally simple:
 
@@ -20,6 +20,8 @@ Chronora v0.1 currently assumes:
 - Claude Code CLI installed
 - `cclaude` installed via `./install.sh`
 
+Claude Code is the only fully supported coding frontend today.
+
 ## First Run
 
 From any project root:
@@ -35,7 +37,7 @@ Chronora initializes:
 - `.claude/sessions/`
 - `CLAUDE.local.md` symlink in the project root
 
-The wrapper then snapshots the before-state and launches Claude Code in the same project.
+The entrypoint then snapshots the before-state and launches Claude Code in the same project.
 
 ## Session Lifecycle
 
@@ -49,7 +51,7 @@ run cclaude
   -> append archive metadata
 ```
 
-Chronora is deliberately conservative here. The goal is continuity, not magic.
+Chronora is deliberately conservative here. The goal is workflow continuity, not hidden automation.
 
 ## Recommended Operating Loop
 
@@ -102,7 +104,7 @@ Typical updates include:
 
 ## Archive Role in the Workflow
 
-When Claude exits, Chronora writes a before/after archive for the session.
+When the agent exits, Chronora writes a before/after archive for the session.
 
 That archive answers:
 

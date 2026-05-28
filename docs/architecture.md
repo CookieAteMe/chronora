@@ -2,15 +2,15 @@
 
 ## Overview
 
-Chronora is a file-based continuity layer around a coding frontend such as Claude Code.
+Chronora is a file-based continuity layer for AI coding workflows.
 
-The system has one goal: preserve durable project context across sessions without relying on hidden chat history or external retrieval systems.
+Its current implementation is Claude-first, with Claude Code as the only fully supported frontend in v0.1. The broader architecture is intentionally tool-agnostic: preserve durable project context across sessions without depending on hidden chat history or external retrieval systems.
 
 ## Components
 
 ### 1. `bin/cclaude`
 
-The wrapper entrypoint.
+The current entrypoint.
 
 Responsibilities:
 
@@ -32,7 +32,7 @@ It is intentionally small so users can adapt it to the project rather than inher
 
 The default project-local instruction file.
 
-It teaches Claude to read and maintain `.claude/current.md` as durable state.
+It teaches the current Claude-first workflow to read and maintain `.claude/current.md` as durable state.
 
 ### 4. `.claude/current.md`
 
@@ -59,24 +59,28 @@ All important state should be visible, editable, and versionable.
 
 ### Small surface area
 
-The wrapper should stay understandable in a single read. The entire mechanism should be maintainable with shell scripts and Markdown.
+The implementation should stay understandable in a single read. The entire mechanism should be maintainable with shell scripts and Markdown.
 
 ### Non-invasive integration
 
-The wrapper must not rewrite or depend on the main `CLAUDE.md` in the target project.
+The current entrypoint must not rewrite or depend on the main `CLAUDE.md` in the target project.
 
 ### Local-first operation
 
 Everything should work with local files only. No indexing service, database, or embedding store is required.
 
+### Claude-first, adapter-ready scope
+
+The current runtime path is built around Claude Code, but the continuity primitives are meant to support future adapters rather than lock the project into a Claude-exclusive identity.
+
 ## Data Flow
 
 1. User runs `cclaude` in a project.
-2. Wrapper initializes `.claude/` state files if missing.
-3. Wrapper archives the starting state.
-4. Claude session runs.
-5. User or Claude updates `.claude/current.md` as decisions evolve.
-6. Wrapper archives the ending state on exit.
+2. Chronora initializes `.claude/` state files if missing.
+3. Chronora archives the starting state.
+4. Claude Code session runs.
+5. User or agent updates `.claude/current.md` as decisions evolve.
+6. Chronora archives the ending state on exit.
 7. Next session resumes from the saved state.
 
 ## Failure Model
@@ -84,7 +88,7 @@ Everything should work with local files only. No indexing service, database, or 
 The system is deliberately simple:
 
 - if a template is missing, initialization fails loudly
-- if the root `CLAUDE.local.md` already exists as a real file, the wrapper does not overwrite it
-- if Claude CLI is missing, the wrapper exits with a clear message
+- if the root `CLAUDE.local.md` already exists as a real file, the entrypoint does not overwrite it
+- if Claude Code CLI is missing, the entrypoint exits with a clear message
 
 This avoids silent mutation of project files.
