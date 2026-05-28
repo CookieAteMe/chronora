@@ -1,6 +1,8 @@
 # Example Project
 
-This example shows how a target repository looks after running `cclaude`.
+This example shows the smallest useful Chronora layout.
+
+It is intentionally minimal and exists to demonstrate the shape of a target project after `cclaude` bootstraps local state.
 
 ## Layout
 
@@ -15,4 +17,6 @@ project-example/
     └── app.txt
 ```
 
-The key idea is that durable Claude state lives inside `.claude/`, while the root symlink makes the local instructions easy to discover.
+This example is useful when you only want to inspect the directory structure.
+
+For a more realistic walkthrough with populated project state and a sample archive, see [examples/basic-project/](../basic-project/README.md).

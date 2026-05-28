@@ -1,140 +1,164 @@
 # Chronora
 
-> 一个面向软件开发的 **AI IDE Continuity Layer**，用确定性的、文件驱动的方式维护长期项目状态。
->
-> [English](README.md)
+面向 AI 编程工具的持久上下文与 session 连续性工作流。
 
-> **Coding agents do not primarily need better chat memory.**
->
-> **They need deterministic project state.**
+> Coding agents need deterministic state, not probabilistic recall.
 
-Chronora 不是一个只为某个模型准备的小脚本，而是一层面向 AI 编程场景的连续性基础设施。
+[English](README.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Example](examples/basic-project/README.md)
 
-它的核心目标，是把关键上下文从临时的聊天窗口里拿出来，落到显式、可检查、可版本化的项目状态文件中。当前仓库提供的是一个基于 Claude Code 的参考接入器，但这个系统本身并不依赖 Claude。Claude、Codex、OpenCode，甚至 IDE 内置 agent，本质上都只是前端；真正需要稳定的是背后的 continuity layer。
+Chronora 是一个面向长期 coding session 的 v0.1 基础设施层。
 
-## 愿景
+它用普通项目文件为 AI 编程工具提供一层确定性的连续性机制：以 `current.md` 作为当前项目真相，以项目本地指令文件约束 agent 行为，并用 append-only session archive 保留状态演化轨迹。目标不是做一个更花哨的聊天包装器，而是让项目状态变得显式、可检查、可编辑、可持续。
 
-构建一层可落地的 AI 开发操作层，让长期软件工程中的上下文连续性变成显式状态，而不是对话残影。
+## Why Chronora
 
-长期来看，我们希望 AI 参与的软件开发，不再依赖“这次聊天窗口里还记得多少”，而是依赖一套稳定的项目状态模型：无论换模型、换终端、换 IDE，agent 都能从同一份确定性的项目状态继续工作。
+聊天记录可以作为执行痕迹，但它不适合做软件工程的主状态系统。
 
-## 为什么需要它
+在一次性的小任务里，对话上下文通常够用；但在真实仓库中，它很快会失效：
 
-AI 编程工具在局部推理、代码生成、短链路执行上进步很快，但在“跨 session 的项目连续性”上仍然脆弱。
+- 架构决策会在每次新会话里被重新讨论
+- 尚未解决的阻塞会埋进 token 历史里
+- 未完成的工作会被重新发现，而不是被自然续接
+- 当前真相与历史推理会混在一起
+- 用户会被迫成为唯一可靠的长期记忆系统
 
-真实的软件工程里，真正难的通常不是“下一段代码怎么写”，而是以下这些东西如何持续保持一致：
+Chronora 通过把连续性从隐藏的聊天召回里移出来，落到确定性的项目状态中，来解决这个问题。
 
-- 当前的架构决策
-- 现实存在的约束条件
-- 尚未解决的问题
-- 正在推进的任务
-- 跨 session 的工作意图
-- 历史记录与当前真实状态之间的边界
+对于 coding agents，这意味着：
 
-如果没有一层确定性的状态管理，用户就会被迫充当唯一的长期记忆系统。
+- 用**显式项目状态**替代推测出来的上下文
+- 用 **`current.md` continuity** 替代每次从 prompt 重新拼装背景
+- 用 **append-only session history** 保留状态是如何变化的
+- 用 **summary-friendly state** 支持压缩，而不是把 transcript 当 source of truth
+- 用 **deterministic continuity** 支撑长期 coding session
 
-## Chat 式 AI 开发的问题
+## What Chronora Provides
 
-随着项目周期变长、状态变复杂，纯聊天式开发会越来越不稳定。
+Chronora 在 v0.1 中刻意保持范围克制，只提供一个聚焦的工作流层：
 
-常见问题包括：
+- `current.md` 作为可变的 canonical project state
+- `CLAUDE.local.md` 作为项目本地 agent 指令
+- `.claude/sessions/` 作为 append-only session archive
+- `cclaude` 作为 Claude Code 的启动 wrapper
+- 可复用的模板与示例，帮助你复现实践方式
 
-- 架构决策在每次新会话里被重新讨论一遍
-- 未完成的工作不能自然续接，只能重新摸索
-- 重要信息被埋进超长对话里，难以编辑和维护
-- 关键约束存在于 token 历史中，而不是存在于显式状态里
-- 一旦切换模型、工具或上下文窗口，agent 行为就开始漂移
+当前实现有意保持为 file-driven、shell-based。它不会引入数据库、vector store、embeddings，也不会引入新的 runtime orchestration 层。
 
-聊天记录适合作为执行痕迹，不适合作为主要状态存储。
+## Installation
 
-## 确定性的项目状态
+Chronora v0.1 当前主要面向 **macOS + zsh**，并要求已安装 [Claude Code CLI](https://claude.ai/code)。
 
-Chronora 把“AI 连续性”看成一个状态管理问题，而不是一个对话召回问题。
-
-一个确定性的项目状态，应当具备四个特征：
-
-1. **显式**：重要上下文被写下来，而不是依赖模型隐式记住。
-2. **可检查**：人和 agent 读取的是同一份状态源。
-3. **可编辑**：项目现实变化时，可以直接修正状态。
-4. **可版本化**：状态变化可以归档、diff、审阅。
-
-因此，这个系统从一开始就是 **file-driven state**。
-
-在完整的概念模型里，项目连续性会被拆成几类状态对象：
-
-- `CLAUDE.local.md` 或其他前端本地指令文件
-- 作为项目当前真相的 `current.md`
-- 用于持久任务拆解与归属的 `tasks/`
-- 用于长期压缩摘要的 `summaries/`
-- 作为追加写历史的 `sessions/`
-
-当前参考实现已经落地了 `current.md` 和 `sessions/`，并且在架构上为更完整的状态图留好了扩展空间。
-
-## 有状态 AI 开发
-
-所谓 stateful AI development，不是让 agent “更会聊天”，而是让它每次进入项目时，都能进入一个已有运行上下文。
-
-基本循环是：
-
-1. 读取项目本地规则
-2. 加载当前项目状态
-3. 基于状态执行工作
-4. 在持久事实变化时更新状态
-5. 将 session 以追加写方式归档
-6. 让下一次会话从更新后的状态继续
-
-这更像系统运行，而不是聊天续接。它依赖的是文件状态、确定性上下文和清晰的归档边界。
-
-## 架构
-
-Chronora 的定位是一个 **AI IDE Continuity Layer**。
-
-前端 agent 可以变化，但 continuity contract 不应该跟着变化。
-
-### 逻辑状态流
-
-```text
-Claude Code / Codex / OpenCode / IDE Agent
-                  |
-                  v
-             项目本地指令层
-        (CLAUDE.local.md 等)
-                  |
-                  v
-             项目当前状态层
-               (current.md)
-                  |
-                  v
-            结构化工作状态层
-         (tasks/ 和 summaries/)
-                  |
-                  v
-             追加写 session 历史
-               (sessions/)
+```bash
+git clone https://github.com/CookieAteMe/chronora.git
+cd chronora
+./install.sh
 ```
 
-### 当前参考接入器
+安装脚本会：
 
-```text
+- 将 `cclaude` 复制到 `~/bin`
+- 将默认模板安装到 `~/.local/share/chronora/templates`
+- 确保安装后的 wrapper 具有可执行权限
+- 检查 Claude Code CLI 是否可用
+- 在 `~/bin` 不在 `PATH` 中时给出提示
+
+如果需要，请将下面这行加入 `~/.zshrc`，然后重新加载 shell：
+
+```bash
+export PATH="$HOME/bin:$PATH"
+```
+
+## Usage
+
+### 1. 初始化项目
+
+在任意项目根目录运行 `cclaude`：
+
+```bash
+cd ~/work/my-project
 cclaude
-  -> 确保 .claude/ 存在
-  -> 从模板生成 current.md 和 CLAUDE.local.md
-  -> 创建根目录软链接
-  -> 记录 session 开始前状态
-  -> 启动编码前端
-  -> 记录 session 结束后状态
-  -> 追加写 metadata
 ```
 
-### 架构立场
+首次运行时，Chronora 会创建：
 
-- continuity layer 持有状态，而不是 frontend 持有状态
-- archive 是追加写历史，不是当前真相
-- summary 的职责是压缩状态，不是替代状态
-- 项目状态必须能穿越模型切换和进程重启
-- 不应该污染目标项目已有的主 `CLAUDE.md`
+```text
+my-project/
+├── .claude/
+│   ├── current.md
+│   ├── CLAUDE.local.md
+│   └── sessions/
+└── CLAUDE.local.md -> .claude/CLAUDE.local.md
+```
 
-## 目录结构
+### 2. 启动一个 continuity-aware coding session
+
+`cclaude` 会先完成本地状态初始化、记录 before-state，然后在项目上下文中启动 Claude Code。
+
+推荐的 session 循环是：
+
+1. 运行 `cclaude`
+2. 加载 `.claude/current.md`
+3. 延续既有架构与约束条件
+4. 当持久事实变化时更新 `current.md`
+5. 退出后让 Chronora 自动归档本次 session
+
+### 3. 把 `current.md` 当作 live project truth
+
+一个健康的 `current.md` 应该保持紧凑、可执行、可续接。它记录的是下一次 session 必须立即当成真相的内容：
+
+```md
+# Current Project
+
+## Project Status
+
+Login flow MVP is working locally. Registration is partially implemented.
+
+## Architecture
+
+FastAPI backend with a single entry point in `src/main.py`.
+
+## Active Problems
+
+No rate limiting on `/login` yet.
+
+## Important Decisions
+
+Keep auth logic in one module until the API stabilizes.
+
+## Next Steps
+
+1. Add email validation to registration.
+2. Add integration coverage for happy-path login.
+```
+
+### 4. 查看 session archive
+
+每次运行都会在 `.claude/sessions/` 下创建一个 append-only archive。
+
+一个典型的 archive 目录包含：
+
+```text
+.claude/sessions/2026-05-27_10-00-00-12345/
+├── current.before.md
+├── current.after.md
+├── CLAUDE.local.before.md
+├── CLAUDE.local.after.md
+└── session.meta
+```
+
+这让你可以轻量地追踪项目状态如何演化，而不需要把聊天记录当作主状态系统。
+
+### 5. 在下一次 session 里继续，而不是重新拼接上下文
+
+第二天，或者下一次打开终端时，直接再运行：
+
+```bash
+cclaude
+```
+
+Chronora 会从显式状态继续，而不是依赖模型去“刚好记得”上一次会话里的正确架构背景。
+
+## Project Structure
 
 ### 仓库结构
 
@@ -152,9 +176,13 @@ chronora/
 │   └── CLAUDE.local.md
 ├── docs/
 │   ├── architecture.md
-│   ├── workflow.md
-│   └── migration.md
+│   ├── current-md-guide.md
+│   ├── migration.md
+│   ├── philosophy.md
+│   ├── session-archive.md
+│   └── workflow.md
 └── examples/
+    ├── basic-project/
     └── project-example/
 ```
 
@@ -165,322 +193,65 @@ your-project/
 ├── .claude/
 │   ├── current.md
 │   ├── CLAUDE.local.md
-│   ├── sessions/
-│   ├── tasks/       # 可选 / 面向未来扩展
-│   └── summaries/   # 可选 / 面向未来扩展
+│   └── sessions/
 └── CLAUDE.local.md -> .claude/CLAUDE.local.md
 ```
 
-当前实现会自动初始化 `current.md`、`CLAUDE.local.md` 和 `sessions/`。更完整的 `tasks/`、`summaries/` 状态域，则属于这个系统的自然演进方向。
+## Docs
 
-## 工作流
+- [Workflow](docs/workflow.md) — session lifecycle 在实际项目中如何运作
+- [current.md Guide](docs/current-md-guide.md) — canonical state file 应该写什么
+- [Session Archive](docs/session-archive.md) — 如何阅读 append-only archive
+- [Philosophy](docs/philosophy.md) — deterministic state 的设计理由
+- [Architecture](docs/architecture.md) — 组件概览与 failure model
+- [Migration Guide](docs/migration.md) — 如何从 ad hoc 工作流迁移过来
 
-整个工作流追求的是可预测、可恢复、可续接。
+## Examples
 
-### 1. Bootstrap
+- [examples/basic-project/](examples/basic-project/README.md) — 更贴近真实使用的 v0.1 onboarding 示例，包含填充好的状态与 sample archive
+- [examples/project-example/](examples/project-example/README.md) — 最小结构示例
 
-从项目根目录启动 frontend adapter。若 continuity layer 不存在，就先完成初始化。
+## Current Scope
 
-### 2. Load State
+Chronora 在 v0.1 中有意保持范围收敛。
 
-coding agent 在提出任何修改建议前，先读取项目本地规则与当前项目状态。
+它当前是：
 
-### 3. Execute
+- 面向 Claude Code 用户的持久工作流基础设施
+- 面向 long-running coding sessions 的确定性状态层
+- 围绕 `.claude/` 构建的 file-based continuity mechanism
+- 一个严肃的 shell workflow，而不是完整 runtime 平台
 
-agent 在既有状态约束下完成实现、调试、研究或重构。
+它目前还不是：
 
-### 4. Update Durable State
+- 数据库驱动的 state engine
+- vector-memory 产品
+- multi-agent orchestrator
+- 面向所有 coding frontend 的通用 runtime
 
-当关键决策、阻塞项、下一步方向发生实质变化时，更新 `current.md`，而不是把希望寄托在聊天窗口上。
+## Why Deterministic State Matters
 
-### 5. Compress
+Chronora 把项目连续性视为一个状态管理问题。
 
-把高噪音对话压缩成低熵的长期状态。系统强调的是“有编辑意图的摘要”，不是“堆积 transcript”。
+这意味着系统会明确区分：
 
-### 6. Archive
+- **history** —— 发生过什么
+- **current state** —— 现在什么是真的
+- **future work** —— 下一次 session 应该接什么
 
-将 session 以 append-only 方式归档，既保留历史，又不让历史覆盖当前运行状态。
+这条边界正是长期 coding session 能保持稳定的关键。历史很重要，但它不能替代 source-of-truth state。
 
-### 7. Resume
+## Roadmap
 
-后续 session 即使发生在另一台机器、另一个模型、另一个时间点，也可以从同一份项目状态继续。
+Chronora 的近期方向包括：
 
-## Session Archive System
+- 为新仓库提供更好的 onboarding
+- 提供更强的 `current.md` 指南与示例
+- 提升 archive 的检查体验
+- 为不同类型项目提供更多 examples
+- 在当前 Claude Code 参考工作流之外提供更多 adapter
+- 为 summaries 与 task continuity 预留兼容的状态域
 
-session archive 是一个 **append-only archive**，记录项目状态如何随时间演化。
+## License
 
-每次调用都会在 `.claude/sessions/` 下生成一个带时间戳的目录，通常包含：
-
-- `current.before.md`
-- `current.after.md`
-- `CLAUDE.local.before.md`
-- `CLAUDE.local.after.md`
-- `session.meta`
-
-它的价值主要体现在三个方面：
-
-1. **可审计**：你能看到状态是如何变化的。
-2. **可调试**：你能知道 agent 在进入和退出 session 时分别相信什么。
-3. **可恢复**：当 live state 需要修正时，你不会丢失历史轨迹。
-
-archive 是历史证据，不是当前真相。
-
-## Summary Compression Philosophy
-
-长期运行的 AI 系统一定需要压缩，但压缩不能靠“自动记住一点”。压缩应该是一种明确的状态工程。
-
-Chronora 区分三件事：
-
-- **history**：发生过什么
-- **summary**：什么仍然重要
-- **current state**：下一次 agent 必须立即视为真相的是什么
-
-摘要的目标，不是把聊天记录写得更好看，而是把长期有效的工程信息提炼出来。
-
-好的压缩应该：
-
-- 去掉对话噪音
-- 保留决策与约束
-- 保留可执行的下一步
-- 降低下一次会话的歧义
-
-坏的压缩则会：
-
-- 把 transcript 直接塞进状态文件
-- 不区分轻重，什么都存
-- 把已经过时的讨论当成当前真相
-
-随着系统演进，`summaries/` 应当成为位于原始 session 历史之上、live state 之下的一层正式压缩层。
-
-## 任务连续性
-
-coding agent 需要的，不只是“记住一些事实”，更是“把工作持续做下去”的能力。
-
-这意味着系统要能保留：
-
-- 当前在做什么
-- 什么被阻塞了
-- 依赖关系是什么
-- 下一个 agent 应该接什么
-- 什么已经完成，什么只是讨论过
-
-在当前阶段，这些信息可以先通过 `current.md` 承载。更进一步的演进，则是形成显式的 `tasks/` 状态图，记录任务归属、依赖和执行元数据。
-
-对于 long-running coding agents 来说，任务连续性是刚需，因为真实工作单元几乎从来都不是一个 prompt，而是一串跨 session 的执行链条。
-
-## Comparison
-
-确定性状态并不是给 AI 增加“记忆”的唯一方式，但它比多数基于召回的方案更适合软件工程。
-
-| 方案 | 核心机制 | 优势 | 在 coding continuity 上的局限 |
-| --- | --- | --- | --- |
-| Chat history | 线性对话记录 | 零配置、天然存在 | 受 token 限制、隐式、难编辑、难区分历史与当前真相 |
-| Cursor memory | 工具内管理的助手记忆 | 方便个性化与轻量提示 | 不是确定性的项目运行状态，可审计性有限 |
-| Mem0 | 语义记忆召回 | 适合记事实、偏好、跨会话信息 | 核心仍是 retrieval，而不是 state；不适合表达精确项目真相 |
-| Vector memory | embedding 检索 | 擅长大规模模糊召回 | 召回结果非确定、排序有歧义、天然不适合作为 source of truth |
-| Chronora | 显式文件状态 + append-only archive | 确定、可检查、可编辑、可版本化 | 需要团队保持状态质量 |
-
-为什么这对 coding 尤其重要？
-
-因为软件项目首先是一个**协调系统**，不是一个“找回相似语义片段”的系统。它需要的是明确约束、当前真相、任务衔接和可追踪演化。
-
-## 为什么不用 Vector Memory
-
-Vector memory 在大规模、模糊、跨文档语义召回里很有价值。
-
-但这不是这里的主要问题。
-
-在 coding continuity 场景下，关键问题通常不是：
-
-- “之前有没有人说过类似的话？”
-- “哪个 chunk 排名最靠前？”
-
-真正的问题是：
-
-- “当前架构决策到底是什么？”
-- “现在真正的阻塞项是什么？”
-- “下一个 agent 应该把什么当成事实？”
-- “这次 session 相比上次到底改了什么？”
-
-这些都是 state 问题，不是 retrieval 问题。
-
-Embedding recall 本质上是概率性的，而项目状态应该是确定性的。
-
-## 为什么 `current.md` 是 Source of Truth
-
-`current.md` 的职责，是承载“下一次编码 session 开始前必须先加载的那一小组关键事实”。
-
-它之所以应该成为 source of truth，是因为它同时满足：
-
-- 现实变化时可以直接更新
-- 足够简洁，不会失去可读性
-- 足够显式，可以被人类审阅
-- 跨 session、跨 frontend 稳定存在
-
-archive 负责回答“我们是怎么走到这里的”。
-
-`current.md` 负责回答“这里现在到底是什么状态”。
-
-这个边界非常关键。
-
-如果聊天记录里的某个事实和 `current.md` 冲突，那么在状态文件未被修正之前，聊天记录只是历史上下文，`current.md` 才是运行真相。
-
-## Philosophy
-
-Chronora 背后是一套偏系统工程的理念，而不是一套偏 prompt engineering 的技巧。
-
-### File-driven state
-
-关键上下文必须落在普通文件里，这样用户才能直接查看、diff、修改、审阅、提交。
-
-### Append-only archive
-
-历史应该持续累积，而不是被改写。只有这样，调试和长期分析才有依据。
-
-### Explicit state
-
-系统不应该依赖隐式记忆、黑盒排序或“刚好想起来”来承载关键项目事实。
-
-### Deterministic context
-
-无论上下文窗口多大、聊天是否截断、前端来自哪个厂商，下一次 session 都应该加载到同一份运行状态。
-
-这套理念看起来保守，但工程基础设施真正可靠，往往正是因为它足够显式，而不是因为它足够魔法。
-
-## Installation
-
-当前仓库提供的是一个基于 macOS zsh 的参考接入器 `cclaude`。
-
-```bash
-git clone <repo-url>
-cd chronora
-./install.sh
-```
-
-安装脚本会：
-
-- 将 `cclaude` 复制到 `~/bin`
-- 自动添加可执行权限
-- 将默认模板安装到 `~/.local/share/chronora/templates`
-- 如果 `~/bin` 不在 `PATH` 中，会给出提示
-
-## Quick Start
-
-在任意项目目录中执行：
-
-```bash
-cd ~/work/my-project
-cclaude
-```
-
-首次运行时，adapter 会创建：
-
-- `.claude/current.md`
-- `.claude/CLAUDE.local.md`
-- `.claude/sessions/`
-- 根目录软链接 `CLAUDE.local.md`
-
-随后你就拥有一个标准的 stateful workflow：
-
-1. 启动 coding session
-2. 读取确定性的项目状态
-3. 执行工作
-4. 当持久事实变化时更新 `current.md`
-5. 让 append-only archive 记录整个 session
-
-## Example Project
-
-可以查看 `examples/project-example/` 了解最小参考布局。
-
-这个示例展示了：
-
-- 项目本地 `.claude/` 状态目录
-- 根目录 `CLAUDE.local.md` 软链接
-- 预置的 `current.md`
-- 占位的 session archive 目录
-
-## Multi-Agent Compatibility
-
-这个项目在理念上并不绑定 Claude。
-
-更准确地说，它是一层 **AI IDE Continuity Layer**：
-
-- Claude Code 可以是一个 frontend
-- Codex 可以是一个 frontend
-- OpenCode 可以是一个 frontend
-- IDE 内置 agent 也可以是 frontend
-
-任何能够稳定读取、遵守、更新这套状态契约的 agent，都可以接入。
-
-这点非常重要，因为未来的长期软件开发，几乎一定会同时涉及多个 agent、多个入口和多个工作界面。能够把它们协调起来的，不会是“它们共享同一个聊天记忆”，而会是“它们共享同一套确定性的项目状态”。
-
-## Long-Term Vision
-
-长期愿景，是把这个项目发展成一个面向软件工程的 AI operating workspace。
-
-这意味着未来它应该支持：
-
-- 跨长时间跨度的 summary compression
-- 带依赖关系的 task graph
-- 基于共享项目状态的 multi-agent coordination
-- 状态校验与冲突检测
-- 独立于任何单一 frontend 的项目连续性
-- agent 可替换，但 state 保持稳定的运行模型
-
-到了那个阶段，AI development infrastructure 的形态会更像一个 **project state engine**，而不再像聊天记录管理器。
-
-## Future Roadmap
-
-中短期可预期的方向包括：
-
-- `tasks/` 的一等支持，用于真正的任务连续性
-- `summaries/` 的一等支持，用于结构化压缩层
-- 除 `cclaude` 外更多 frontend adapter
-- `current.md` 的状态 lint 与质量检查
-- archive 的可视化与 diff 工具
-- 面向并发 agent 的状态合并语义
-- 更高层级的 AI operating workspace 抽象
-
-## Design Principles
-
-1. **Determinism over recall**：精确状态优先于近似召回。
-2. **Local-first operation**：连续性不应依赖外部基础设施才能成立。
-3. **Human readability**：状态必须能被工程师直接理解。
-4. **Append-only history**：迭代过程中不应该销毁历史证据。
-5. **Frontend neutrality**：状态模型应该比单一工具活得更久。
-6. **Minimal hidden behavior**：核心机制应当体现在文件和脚本里，而不是黑盒里。
-7. **Disciplined compression**：摘要的目标是降熵，不是制造新的歧义。
-
-## FAQ
-
-### 这是 Claude 专属工具吗？
-
-不是。当前仓库提供的是 Claude Code 的参考接入器，但架构本身是 frontend-agnostic 的。更准确的理解方式，是把它看成一层 AI IDE continuity layer。
-
-### 为什么不能只依赖 chat history？
-
-因为 chat history 是隐式的、受 token 限制的，也不擅长区分“旧讨论”和“当前真相”。软件开发需要的是可编辑状态。
-
-### 为什么使用 Markdown 文件，而不是数据库或向量存储？
-
-因为这里最核心的要求是确定性、可检查性和低运维复杂度。普通文件更容易审计和修正。
-
-### `current.md` 里应该写什么？
-
-只写持久有效的项目真相：架构选择、关键约束、当前阻塞、主要方向、下一步计划。不要把原始聊天记录直接塞进去。
-
-### session archive 是 source of truth 吗？
-
-不是。archive 是 append-only 的历史证据，`current.md` 才是 live operational state。
-
-### 多个 agent 可以共享同一套状态吗？
-
-可以，而且这正是把连续性从聊天记忆提升为显式状态的主要原因之一。
-
-### 它会替代 issue tracker 或正式项目管理系统吗？
-
-不会。它更像是仓库内部的一层 AI-native continuity layer，用来补上 agent 工作流里最缺的那部分状态连续性。
-
-### 为什么这个项目看起来更像基础设施，而不是 wrapper？
-
-因为 wrapper 只是入口，真正的系统是背后的状态模型：确定性上下文、append-only archive，以及面向 long-running coding agents 的显式连续性。
+Chronora 采用 [MIT License](LICENSE)。

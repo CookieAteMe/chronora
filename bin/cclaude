@@ -14,10 +14,32 @@ ROOT_LINK="$PROJECT_ROOT/CLAUDE.local.md"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")-$$
 ARCHIVE_DIR="$SESSIONS_DIR/$TIMESTAMP"
 
+abort() {
+  print "chronora: $1" >&2
+  exit 1
+}
+
 if [[ -d "$INSTALLED_TEMPLATE_DIR" ]]; then
   TEMPLATE_DIR="$INSTALLED_TEMPLATE_DIR"
-else
+elif [[ -d "$DEFAULT_TEMPLATE_DIR" ]]; then
   TEMPLATE_DIR="$DEFAULT_TEMPLATE_DIR"
+else
+  abort "no template directory found. Run ./install.sh from the Chronora repository."
+fi
+
+CURRENT_TEMPLATE="$TEMPLATE_DIR/current.md"
+LOCAL_RULES_TEMPLATE="$TEMPLATE_DIR/CLAUDE.local.md"
+
+if [[ ! -f "$CURRENT_TEMPLATE" ]]; then
+  abort "template not found: $CURRENT_TEMPLATE"
+fi
+
+if [[ ! -f "$LOCAL_RULES_TEMPLATE" ]]; then
+  abort "template not found: $LOCAL_RULES_TEMPLATE"
+fi
+
+if ! command -v claude >/dev/null 2>&1; then
+  abort "claude CLI not found in PATH. Install Claude Code from https://claude.ai/code and rerun cclaude."
 fi
 
 mkdir -p "$CLAUDE_DIR" "$SESSIONS_DIR" "$ARCHIVE_DIR"
@@ -41,16 +63,20 @@ claude_dir=$CLAUDE_DIR
 exit_code=$exit_code
 EOF
 
+  print "chronora: session archived to $ARCHIVE_DIR"
   exit $exit_code
 }
 trap cleanup EXIT
 
 if [[ ! -f "$CURRENT_FILE" ]]; then
-  cp "$TEMPLATE_DIR/current.md" "$CURRENT_FILE"
+  cp "$CURRENT_TEMPLATE" "$CURRENT_FILE"
+  print "chronora: initialized deterministic project state in $CLAUDE_DIR"
+else
+  print "chronora: resuming with state from $CURRENT_FILE"
 fi
 
 if [[ ! -f "$LOCAL_RULES_FILE" ]]; then
-  cp "$TEMPLATE_DIR/CLAUDE.local.md" "$LOCAL_RULES_FILE"
+  cp "$LOCAL_RULES_TEMPLATE" "$LOCAL_RULES_FILE"
 fi
 
 if [[ -L "$ROOT_LINK" ]]; then
@@ -60,8 +86,7 @@ if [[ -L "$ROOT_LINK" ]]; then
     ln -s ".claude/CLAUDE.local.md" "$ROOT_LINK"
   fi
 elif [[ -e "$ROOT_LINK" ]]; then
-  print "Refusing to replace existing $ROOT_LINK because it is not a symlink."
-  print "Move it manually if you want cclaude to create the convenience symlink."
+  abort "refusing to replace existing $ROOT_LINK because it is not a symlink. Move it manually if you want cclaude to create the convenience symlink."
 else
   ln -s ".claude/CLAUDE.local.md" "$ROOT_LINK"
 fi
@@ -69,9 +94,4 @@ fi
 cp "$CURRENT_FILE" "$ARCHIVE_DIR/current.before.md"
 cp "$LOCAL_RULES_FILE" "$ARCHIVE_DIR/CLAUDE.local.before.md"
 
-if command -v claude >/dev/null 2>&1; then
-  claude "$@"
-else
-  print "Claude Code CLI not found in PATH. Install it first, then rerun cclaude."
-  exit 127
-fi
+claude "$@"

@@ -2,72 +2,143 @@
 
 ## Goal
 
-Use Claude across many sessions without losing architectural continuity.
+Use Chronora to keep project state explicit across long-running Claude Code sessions.
 
-## First-Time Setup
+This workflow is intentionally simple:
 
-1. Install the wrapper with `./install.sh`.
-2. Add `~/bin` to `PATH` if needed.
-3. Open any project directory.
-4. Run `cclaude`.
+1. start from explicit project state
+2. do the work inside that state
+3. update only durable facts
+4. archive the session without mutating history
+5. resume later from the updated state
 
-## What Happens on First Run
+## Prerequisites
 
-The wrapper creates:
+Chronora v0.1 currently assumes:
+
+- macOS with zsh
+- Claude Code CLI installed
+- `cclaude` installed via `./install.sh`
+
+## First Run
+
+From any project root:
+
+```bash
+cclaude
+```
+
+Chronora initializes:
 
 - `.claude/current.md`
 - `.claude/CLAUDE.local.md`
 - `.claude/sessions/`
 - `CLAUDE.local.md` symlink in the project root
 
-At that point the project has persistent Claude state without changing its main `CLAUDE.md`.
+The wrapper then snapshots the before-state and launches Claude Code in the same project.
+
+## Session Lifecycle
+
+```text
+run cclaude
+  -> ensure local state files exist
+  -> snapshot before-state
+  -> run Claude Code in project context
+  -> update current.md if durable facts changed
+  -> snapshot after-state
+  -> append archive metadata
+```
+
+Chronora is deliberately conservative here. The goal is continuity, not magic.
 
 ## Recommended Operating Loop
 
-### Start
+### 1. Start from state
 
 At the beginning of each session:
 
 - run `cclaude`
 - read `.claude/current.md`
-- understand the architecture, open issues, and next steps before changing code
+- understand the current architecture, active problems, and next steps before changing code
 
-### Work
+### 2. Work within the existing context
 
 During the session:
 
 - make code or documentation changes
-- keep architecture consistent with existing decisions
+- preserve existing technical decisions unless they truly changed
 - avoid treating the chat transcript as the only source of truth
 
-### Update State
+### 3. Update `current.md` when durable truth changes
 
-After meaningful progress:
+A good update to `current.md` records state that the next session must load immediately.
 
-- update `.claude/current.md`
-- keep only durable information
-- remove stale items when they are no longer relevant
+Typical updates include:
 
-Good things to store:
+- architecture decisions that affect future work
+- blockers that remain unresolved after the session
+- partial implementation state that must be resumed later
+- concrete next steps for the next session
 
-- decisions that affect future implementation
-- unresolved blockers
-- partial work that another session must continue
-- next concrete action
+## What Belongs in `current.md`
 
-Bad things to store:
+| Good state | Why it belongs |
+| --- | --- |
+| project status | tells the next session where the work stands |
+| architecture decisions | prevents re-litigating key structure |
+| active blockers | keeps real constraints visible |
+| important decisions | preserves rationale that still matters |
+| next steps | makes resumption concrete |
 
-- casual conversation
-- verbose logs
-- transient debugging output
-- duplicated content from other source files
+## What Does Not Belong in `current.md`
 
-### End
+| Bad content | Why it should stay out |
+| --- | --- |
+| casual conversation | not durable project state |
+| verbose logs | high-noise, low-value state |
+| transient debugging output | expires quickly and clutters the file |
+| duplicated source code | the repository already stores code truth |
+| raw transcript excerpts | history is not live operational state |
 
-When Claude exits, the wrapper saves a before/after archive for the session.
+## Archive Role in the Workflow
+
+When Claude exits, Chronora writes a before/after archive for the session.
+
+That archive answers:
+
+- what the project state was before the run
+- what changed during the run
+- what the project state looked like when the run ended
+
+The archive is history.
+
+`current.md` is still the live source of truth.
+
+## Recovering from a Bad Session
+
+If a session leaves `current.md` in the wrong shape:
+
+1. inspect the most recent directory under `.claude/sessions/`
+2. compare `current.before.md` and `current.after.md`
+3. restore the correct facts by editing live `current.md`
+4. keep the archive intact as historical evidence
+
+Chronora does not treat archive history as mutable truth. It preserves evidence and lets the live state be corrected explicitly.
 
 ## Team Usage
 
-This workflow also works in shared repositories when teams agree to treat `.claude/current.md` as a state document instead of a conversation dump.
+Chronora also works in shared repositories when a team agrees that `.claude/current.md` is a state document, not a conversation dump.
 
-The important discipline is editorial, not technical: keep the file small, current, and durable.
+That requires editorial discipline:
+
+- keep the file small
+- remove stale items quickly
+- prefer concrete facts over speculative notes
+- update the state when project reality changes
+
+## Related Docs
+
+- [current.md Guide](current-md-guide.md)
+- [Session Archive](session-archive.md)
+- [Philosophy](philosophy.md)
+- [Migration Guide](migration.md)

@@ -1,4 +1,11 @@
 .DS_Store
+
+# Chronora runtime state for the repository itself
 /.claude/
 /CLAUDE.local.md
+
+# Generated Claude Code transcript captures
+*.typescript
+
+# Logs
 *.log
