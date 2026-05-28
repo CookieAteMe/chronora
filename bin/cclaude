@@ -1,0 +1,77 @@
+#!/bin/zsh
+set -euo pipefail
+
+SCRIPT_DIR=${0:A:h}
+REPO_ROOT=${SCRIPT_DIR:h}
+DEFAULT_TEMPLATE_DIR="$REPO_ROOT/templates"
+INSTALLED_TEMPLATE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/stateful-ai-workflow/templates"
+PROJECT_ROOT=$(pwd)
+CLAUDE_DIR="$PROJECT_ROOT/.claude"
+SESSIONS_DIR="$CLAUDE_DIR/sessions"
+CURRENT_FILE="$CLAUDE_DIR/current.md"
+LOCAL_RULES_FILE="$CLAUDE_DIR/CLAUDE.local.md"
+ROOT_LINK="$PROJECT_ROOT/CLAUDE.local.md"
+TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")-$$
+ARCHIVE_DIR="$SESSIONS_DIR/$TIMESTAMP"
+
+if [[ -d "$INSTALLED_TEMPLATE_DIR" ]]; then
+  TEMPLATE_DIR="$INSTALLED_TEMPLATE_DIR"
+else
+  TEMPLATE_DIR="$DEFAULT_TEMPLATE_DIR"
+fi
+
+mkdir -p "$CLAUDE_DIR" "$SESSIONS_DIR" "$ARCHIVE_DIR"
+
+cleanup() {
+  local exit_code=$?
+  trap - EXIT
+
+  if [[ -f "$CURRENT_FILE" ]]; then
+    cp "$CURRENT_FILE" "$ARCHIVE_DIR/current.after.md"
+  fi
+  if [[ -f "$LOCAL_RULES_FILE" ]]; then
+    cp "$LOCAL_RULES_FILE" "$ARCHIVE_DIR/CLAUDE.local.after.md"
+  fi
+
+  cat > "$ARCHIVE_DIR/session.meta" <<EOF
+started_at=$TIMESTAMP
+ended_at=$(date +"%Y-%m-%d_%H-%M-%S")
+project_root=$PROJECT_ROOT
+claude_dir=$CLAUDE_DIR
+exit_code=$exit_code
+EOF
+
+  exit $exit_code
+}
+trap cleanup EXIT
+
+if [[ ! -f "$CURRENT_FILE" ]]; then
+  cp "$TEMPLATE_DIR/current.md" "$CURRENT_FILE"
+fi
+
+if [[ ! -f "$LOCAL_RULES_FILE" ]]; then
+  cp "$TEMPLATE_DIR/CLAUDE.local.md" "$LOCAL_RULES_FILE"
+fi
+
+if [[ -L "$ROOT_LINK" ]]; then
+  LINK_TARGET=$(readlink "$ROOT_LINK")
+  if [[ "$LINK_TARGET" != ".claude/CLAUDE.local.md" ]]; then
+    rm "$ROOT_LINK"
+    ln -s ".claude/CLAUDE.local.md" "$ROOT_LINK"
+  fi
+elif [[ -e "$ROOT_LINK" ]]; then
+  print "Refusing to replace existing $ROOT_LINK because it is not a symlink."
+  print "Move it manually if you want cclaude to create the convenience symlink."
+else
+  ln -s ".claude/CLAUDE.local.md" "$ROOT_LINK"
+fi
+
+cp "$CURRENT_FILE" "$ARCHIVE_DIR/current.before.md"
+cp "$LOCAL_RULES_FILE" "$ARCHIVE_DIR/CLAUDE.local.before.md"
+
+if command -v claude >/dev/null 2>&1; then
+  claude "$@"
+else
+  print "Claude Code CLI not found in PATH. Install it first, then rerun cclaude."
+  exit 127
+fi

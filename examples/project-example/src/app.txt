@@ -1,0 +1,3 @@
+# Example Stateful App
+
+This file exists only to show that the wrapper works inside a normal project directory.
