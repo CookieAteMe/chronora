@@ -70,16 +70,16 @@ cd chronora
 
 安装脚本会：
 
-- 将 `cclaude` 复制到 `~/bin`
+- 将 `cclaude` 复制到当前已在 `PATH` 中的首选目录（优先 `~/.local/bin`，否则 `~/bin`）
 - 将默认模板安装到 `~/.local/share/chronora/templates`
 - 确保安装后的 entrypoint 具有可执行权限
 - 检查 Claude Code CLI 是否可用
-- 在 `~/bin` 不在 `PATH` 中时给出提示
+- 在所选安装目录不在 `PATH` 中时给出提示
 
-如果需要，请将下面这行加入 `~/.zshrc`，然后重新加载 shell：
+如果需要，请把安装器输出的那行加入 `~/.zprofile` 或 `~/.zshrc`，然后重新加载 shell：
 
 ```bash
-export PATH="$HOME/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ## Usage

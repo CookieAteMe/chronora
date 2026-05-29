@@ -60,7 +60,7 @@ After the migration:
 
 ## Migration Checklist
 
-- [ ] `cclaude` installed in `~/bin`
+- [ ] `cclaude` installed in a PATH directory (`~/.local/bin` or `~/bin`)
 - [ ] `.claude/current.md` exists
 - [ ] `.claude/CLAUDE.local.md` exists
 - [ ] `CLAUDE.local.md` symlink exists at the root

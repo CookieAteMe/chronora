@@ -2,8 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR=${0:A:h}
-TARGET_DIR="$HOME/bin"
-TARGET_SCRIPT="$TARGET_DIR/cclaude"
+PREFERRED_TARGET_DIRS=(
+  "$HOME/.local/bin"
+  "$HOME/bin"
+)
 SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/chronora"
 TEMPLATE_DIR="$SHARE_DIR/templates"
 SOURCE_SCRIPT="$SCRIPT_DIR/bin/cclaude"
@@ -14,6 +16,43 @@ abort() {
   print "chronora install: $1" >&2
   exit 1
 }
+
+path_contains() {
+  local dir=$1
+  [[ ":$PATH:" == *":$dir:"* ]]
+}
+
+choose_target_dir() {
+  local dir
+
+  for dir in "${PREFERRED_TARGET_DIRS[@]}"; do
+    if path_contains "$dir"; then
+      print -r -- "$dir"
+      return
+    fi
+  done
+
+  print -r -- "${PREFERRED_TARGET_DIRS[1]}"
+}
+
+path_export_line() {
+  local dir=$1
+
+  case "$dir" in
+    "$HOME/.local/bin")
+      print 'export PATH="$HOME/.local/bin:$PATH"'
+      ;;
+    "$HOME/bin")
+      print 'export PATH="$HOME/bin:$PATH"'
+      ;;
+    *)
+      print "export PATH=\"$dir:\$PATH\""
+      ;;
+  esac
+}
+
+TARGET_DIR=$(choose_target_dir)
+TARGET_SCRIPT="$TARGET_DIR/cclaude"
 
 if [[ ! -f "$SOURCE_SCRIPT" ]]; then
   abort "missing source script: $SOURCE_SCRIPT"
@@ -47,19 +86,24 @@ else
   print "chronora install: install it from https://claude.ai/code before running cclaude." >&2
 fi
 
-if [[ ":$PATH:" == *":$TARGET_DIR:"* ]]; then
+if path_contains "$TARGET_DIR"; then
   print "chronora install: $TARGET_DIR is already in PATH."
 else
   print ""
   print "chronora install: $TARGET_DIR is not in PATH."
-  print "Add this line to ~/.zshrc, then run 'source ~/.zshrc' or open a new shell:"
-  print 'export PATH="$HOME/bin:$PATH"'
+  print "Add this line to ~/.zprofile or ~/.zshrc, then reload your shell:"
+  path_export_line "$TARGET_DIR"
 fi
 
 print ""
 print "chronora install: next steps"
 print "  1. cd ~/work/your-project"
-print "  2. cclaude"
+if path_contains "$TARGET_DIR"; then
+  print "  2. cclaude"
+else
+  print "  2. reload your shell"
+  print "  3. cclaude"
+fi
 print ""
 print "On first run, Chronora creates .claude/current.md, .claude/CLAUDE.local.md,"
 print "a root CLAUDE.local.md symlink, and a session archive under .claude/sessions/."

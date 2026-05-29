@@ -70,16 +70,16 @@ cd chronora
 
 The installer:
 
-- copies `cclaude` to `~/bin`
+- copies `cclaude` to the first supported directory already on `PATH` (`~/.local/bin`, otherwise `~/bin`)
 - installs default templates to `~/.local/share/chronora/templates`
 - ensures the installed entrypoint is executable
 - checks whether the Claude Code CLI is available
-- warns if `~/bin` is not currently in `PATH`
+- warns if the chosen install directory is not currently in `PATH`
 
-If needed, add this to `~/.zshrc` and reload your shell:
+If needed, add the suggested line from the installer output to `~/.zprofile` or `~/.zshrc`, then reload your shell:
 
 ```bash
-export PATH="$HOME/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ## Usage
