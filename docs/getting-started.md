@@ -31,7 +31,7 @@ chronora restore
 
 without using `python3 -m chronora.cli restore`.
 
-If your shell cannot find `chronora` immediately, follow the PATH instruction printed by `install.sh`, then reload your shell.
+If your shell cannot find `chronora` immediately, `install.sh` will add the detected user script directory to a compatible shell profile when it can, then tell you which file to reload. The exact install path may differ across machines depending on Python and platform.
 
 ## 3. Initialize a project
 

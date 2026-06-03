@@ -63,10 +63,10 @@ These planned integrations are not shipped in v0.1. Chronora is Claude-first in 
 Chronora is currently validated primarily on **macOS and Linux** and requires the [Claude Code CLI](https://claude.ai/code).
 
 ```bash
-git clone https://github.com/CookieAteMe/chronora.git
-cd chronora
 ./install.sh
 ```
+
+If the detected script directory is not already on `PATH`, `install.sh` will append the correct export line to a compatible shell profile and tell you which file was updated. Script install paths can vary by Python distribution and platform, so the exact directory may differ across machines.
 
 The installer:
 
@@ -77,11 +77,13 @@ The installer:
 - checks whether the Claude Code CLI is available
 - warns if the chosen install directory is not currently in `PATH`
 
-If needed, add the suggested line from the installer output to `~/.zprofile`, `~/.zshrc`, or `~/.bashrc`, then reload your shell:
+If the detected script directory is not already on `PATH`, `install.sh` will append the correct export line to a compatible shell profile and tell you which file was updated. Script install paths can vary by Python distribution and platform, so the exact directory may differ across machines.
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+On some systems the installer may instead detect a Python-managed user script directory such as `~/Library/Python/<version>/bin` on macOS, and it will write the exact export line needed for that machine.
 
 ## Usage
 

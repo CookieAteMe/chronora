@@ -10,3 +10,10 @@
 
 # Logs
 *.log
+
+# Python cache and packaging artifacts
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/

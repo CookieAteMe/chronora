@@ -32,10 +32,71 @@ path_export_line() {
     "$HOME/bin")
       printf '%s\n' 'export PATH="$HOME/bin:$PATH"'
       ;;
+    "$HOME/Library/Python"/*/bin)
+      local version_path=${dir#"$HOME/"}
+      printf 'export PATH="$HOME/%s:$PATH"\n' "$version_path"
+      ;;
     *)
       printf 'export PATH="%s:$PATH"\n' "$dir"
       ;;
   esac
+}
+
+shell_profile_path() {
+  if [[ -n "${ZDOTDIR:-}" ]]; then
+    printf '%s\n' "$ZDOTDIR/.zprofile"
+    return
+  fi
+
+  case "${SHELL:-}" in
+    */zsh)
+      printf '%s\n' "$HOME/.zprofile"
+      ;;
+    */bash)
+      printf '%s\n' "$HOME/.bashrc"
+      ;;
+    *)
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        printf '%s\n' "$HOME/.zprofile"
+      else
+        printf '%s\n' "$HOME/.profile"
+      fi
+      ;;
+  esac
+}
+
+ensure_path_in_profile() {
+  local dir=$1
+  local profile
+  local export_line
+
+  if path_contains "$dir"; then
+    return
+  fi
+
+  profile=$(shell_profile_path)
+  export_line=$(path_export_line "$dir")
+
+  if [[ -z "$profile" ]]; then
+    printf '\n'
+    printf 'chronora install: %s is not in PATH.\n' "$dir"
+    printf 'Add this line to your shell profile, then reload your shell:\n'
+    printf '%s\n' "$export_line"
+    return
+  fi
+
+  mkdir -p "$(dirname "$profile")"
+  touch "$profile"
+
+  if grep -Fqx "$export_line" "$profile"; then
+    printf 'chronora install: PATH export already present in %s\n' "$profile"
+    return
+  fi
+
+  printf '\n%s\n' '# Added by Chronora installer for chronora and cclaude' >> "$profile"
+  printf '%s\n' "$export_line" >> "$profile"
+  printf 'chronora install: added PATH export to %s\n' "$profile"
+  printf 'chronora install: reload your shell for chronora and cclaude to be found.\n'
 }
 
 python_user_bin_dir() {
@@ -153,10 +214,8 @@ fi
 if path_contains "$TARGET_DIR"; then
   printf 'chronora install: %s is already in PATH.\n' "$TARGET_DIR"
 else
-  printf '\n'
   printf 'chronora install: %s is not in PATH.\n' "$TARGET_DIR"
-  printf 'Add this line to ~/.zprofile, ~/.zshrc, or ~/.bashrc, then reload your shell:\n'
-  path_export_line "$TARGET_DIR"
+  ensure_path_in_profile "$TARGET_DIR"
 fi
 
 printf '\n'
