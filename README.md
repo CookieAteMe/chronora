@@ -4,7 +4,7 @@ Persistent context and continuity workflow for AI coding tools.
 
 > Coding agents need deterministic state, not probabilistic recall.
 
-[中文文档](README.zh-CN.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Architecture](docs/architecture.md) · [Example](examples/basic-project/README.md)
+[中文文档](README.zh-CN.md) · [Getting Started](docs/getting-started.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Architecture](docs/architecture.md) · [Example](examples/basic-project/README.md)
 
 Chronora is a Claude-first continuity layer for long-running AI coding workflows.
 
@@ -60,7 +60,7 @@ These planned integrations are not shipped in v0.1. Chronora is Claude-first in 
 
 ## Installation
 
-Chronora v0.1 is currently tested for **macOS with zsh** and requires the [Claude Code CLI](https://claude.ai/code).
+Chronora is currently validated primarily on **macOS and Linux** and requires the [Claude Code CLI](https://claude.ai/code).
 
 ```bash
 git clone https://github.com/CookieAteMe/chronora.git
@@ -70,13 +70,14 @@ cd chronora
 
 The installer:
 
-- copies `cclaude` to the first supported directory already on `PATH` (`~/.local/bin`, otherwise `~/bin`)
+- installs the Python `chronora` CLI with `python3 -m pip install --user .`
+- installs `cclaude` into the same user-level script directory when possible
 - installs default templates to `~/.local/share/chronora/templates`
 - ensures the installed entrypoint is executable
 - checks whether the Claude Code CLI is available
 - warns if the chosen install directory is not currently in `PATH`
 
-If needed, add the suggested line from the installer output to `~/.zprofile` or `~/.zshrc`, then reload your shell:
+If needed, add the suggested line from the installer output to `~/.zprofile`, `~/.zshrc`, or `~/.bashrc`, then reload your shell:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
@@ -104,7 +105,63 @@ my-project/
 └── CLAUDE.local.md -> .claude/CLAUDE.local.md
 ```
 
-### 2. Start a continuity-aware coding session
+### 2. Compute a restore plan
+
+Chronora v0.2 Core introduces a Python CLI entrypoint for restore planning:
+
+```bash
+chronora restore
+```
+
+This first version does **not** launch or control an AI agent.
+It only inspects the current project state and prints:
+
+- detected Chronora state files
+- restore loading order
+- suggested files to read
+- a recommended prompt you can paste into an agent session
+- warnings when core state is missing or degraded
+
+Example output shape:
+
+```text
+Chronora Restore Plan
+=====================
+Project Root: /path/to/project
+State Directory: /path/to/project/.claude
+
+Detected State
+--------------
+- current: /path/to/project/.claude/current.md (Canonical live truth)
+- archive: /path/to/project/.claude/sessions/2026-05-28_09-00-00-99999 (Latest archive evidence fallback)
+
+Restore Order
+-------------
+1. /path/to/project/.claude/current.md — Canonical live truth
+2. /path/to/project/.claude/sessions/2026-05-28_09-00-00-99999 — Latest archive evidence fallback
+```
+
+Today, `chronora restore` primarily expects the current Claude-first layout:
+
+```text
+your-project/
+└── .claude/
+    ├── current.md
+    ├── handoff.md        # optional
+    ├── tasks.md          # optional
+    ├── summaries/        # optional
+    └── sessions/
+```
+
+The restore planner follows the documented continuity-loading order:
+
+1. `current.md`
+2. `handoff.md` if present
+3. `tasks.md` if present
+4. highest-value summary if present
+5. latest archive evidence if needed
+
+### 3. Start a continuity-aware coding session
 
 `cclaude` bootstraps the local state, snapshots the before-state, and launches Claude Code in the project context.
 
@@ -118,7 +175,7 @@ The expected session loop is:
 4. update `current.md` when durable facts change
 5. exit and let Chronora archive the session
 
-### 3. Use `current.md` as live project truth
+### 4. Use `current.md` as live project truth
 
 A healthy `current.md` stays compact and operational. It records the facts the next session must treat as true now:
 

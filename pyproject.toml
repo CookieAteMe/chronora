@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chronora"
+version = "0.2.0"
+description = "Project continuity tooling for AI coding workflows"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "CookieAteMe" }
+]
+license = { text = "MIT" }
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
+
+[project.scripts]
+chronora = "chronora.cli:main"
+
+[tool.setuptools]
+packages = ["chronora"]
