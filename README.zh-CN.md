@@ -4,11 +4,11 @@
 
 > Coding agents need deterministic state, not probabilistic recall.
 
-[English](README.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Architecture](docs/architecture.md) · [Example](examples/basic-project/README.md)
+[English](README.md) · [Getting Started](docs/getting-started.md) · [Workflow](docs/workflow.md) · [Philosophy](docs/philosophy.md) · [Architecture](docs/architecture.md) · [Example](examples/basic-project/README.md)
 
 Chronora 是一个面向长期 AI coding workflow 的 Claude-first continuity layer。
 
-它把持久 project context 放在普通项目文件里，让 coding agents 能从显式状态继续工作，而不是每次都从聊天记录里重新拼接上下文。它的架构是 AI-tool agnostic 的；当前 v0.1 的完整实现路径则只对 Claude Code fully supported。
+它把持久 project context 放在普通项目文件里，让 coding agents 能从显式状态继续工作，而不是每次都从聊天记录里重新拼接上下文。它的架构是 AI-tool agnostic 的；当前实现路径则首先面向 Claude Code。
 
 ## Why Chronora
 
@@ -33,34 +33,34 @@ Chronora 把连续性当作一个确定性的状态问题来处理：
 
 ## What Chronora Provides
 
-Chronora v0.1 刻意保持为一个很小的 continuity layer：
+Chronora v0.1 提供了一个刻意保持很小的 continuity layer：
 
 - `current.md` 作为 canonical mutable project state
 - `CLAUDE.local.md` 作为项目本地 agent instructions
 - `.claude/sessions/` 作为 append-only state history
 - `cclaude` 作为当前的 Claude Code entrypoint
-- 可复用的模板与示例，帮助你稳定复现这套 workflow
+- 模板与示例，帮助你稳定复现这套 workflow
 
 当前实现有意保持为 file-driven、shell-based。它不依赖数据库、embeddings、vector memory，也不依赖隐藏式 orchestration service。
 
 ## Support Status
 
-Current support:
+当前支持：
 
-- Claude Code (fully supported)
+- Claude Code（完全支持）
 
-Planned integrations:
+计划中的集成：
 
 - Codex CLI
 - OpenCode
 - Aider
 - Cursor agents
 
-这些 planned integrations 在 v0.1 里都还没有 shipped。Chronora 今天在实现上是 Claude-first，但 continuity model 本身被设计成可以在未来扩展到单一 coding agent 之外。
+这些 planned integrations 在当前版本里都还没有 shipped。Chronora 今天在实现上是 Claude-first，但 continuity model 本身被设计成可以在未来扩展到单一 coding agent 之外。
 
 ## Installation
 
-Chronora v0.1 当前主要面向 **macOS + zsh**，并要求已安装 [Claude Code CLI](https://claude.ai/code)。
+Chronora 当前主要在 **macOS 和 Linux** 上验证，并要求已安装 [Claude Code CLI](https://claude.ai/code)。
 
 ```bash
 git clone https://github.com/CookieAteMe/chronora.git
@@ -68,19 +68,24 @@ cd chronora
 ./install.sh
 ```
 
+如果检测到的脚本安装目录还不在 `PATH` 中，`install.sh` 会尽量把正确的 export 行自动写入兼容的 shell profile，并告诉你更新了哪个文件。脚本安装路径会因 Python 发行版和平台不同而变化，所以不同机器上看到的目录可能不同。
+
 安装脚本会：
 
-- 将 `cclaude` 复制到当前已在 `PATH` 中的首选目录（优先 `~/.local/bin`，否则 `~/bin`）
-- 将默认模板安装到 `~/.local/share/chronora/templates`
+- 通过 `python3 -m pip install --user .` 安装 Python `chronora` CLI
+- 在可行时把 `cclaude` 安装到同一个用户级脚本目录
+- 把默认模板安装到 `~/.local/share/chronora/templates`
 - 确保安装后的 entrypoint 具有可执行权限
 - 检查 Claude Code CLI 是否可用
-- 在所选安装目录不在 `PATH` 中时给出提示
+- 在所选安装目录当前不在 `PATH` 中时进行提示或自动写入 profile
 
-如果需要，请把安装器输出的那行加入 `~/.zprofile` 或 `~/.zshrc`，然后重新加载 shell：
+例如常见的 PATH 行可能是：
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+但在某些系统上，安装器也可能检测到类似 macOS 的 `~/Library/Python/<version>/bin` 这类 Python 管理的用户脚本目录，并为当前机器写入对应的准确 export 行。
 
 ## Usage
 
@@ -104,11 +109,67 @@ my-project/
 └── CLAUDE.local.md -> .claude/CLAUDE.local.md
 ```
 
-### 2. 启动一个 continuity-aware coding session
+### 2. 计算 restore plan
 
-`cclaude` 会先完成本地状态初始化、记录 before-state，然后在项目上下文中启动 Claude Code。
+Chronora v0.2 Core 引入了一个用于 restore planning 的 Python CLI 入口：
 
-这也是当前唯一 fully supported 的 frontend path。
+```bash
+chronora restore
+```
+
+这个第一版 **不会** 启动或控制任何 AI agent。
+它只会检查当前项目状态，并输出：
+
+- 检测到的 Chronora 状态文件
+- restore 加载顺序
+- 建议读取的文件
+- 可直接粘贴到 agent session 的推荐 Prompt
+- 当核心状态缺失或退化时给出的 warnings
+
+输出示例大致如下：
+
+```text
+Chronora Restore Plan
+=====================
+Project Root: /path/to/project
+State Directory: /path/to/project/.claude
+
+Detected State
+--------------
+- current: /path/to/project/.claude/current.md (Canonical live truth)
+- archive: /path/to/project/.claude/sessions/2026-05-28_09-00-00-99999 (Latest archive evidence fallback)
+
+Restore Order
+-------------
+1. /path/to/project/.claude/current.md — Canonical live truth
+2. /path/to/project/.claude/sessions/2026-05-28_09-00-00-99999 — Latest archive evidence fallback
+```
+
+当前 `chronora restore` 主要面向现有的 Claude-first 状态布局：
+
+```text
+your-project/
+└── .claude/
+    ├── current.md
+    ├── handoff.md        # optional
+    ├── tasks.md          # optional
+    ├── summaries/        # optional
+    └── sessions/
+```
+
+restore planner 遵循当前文档中的连续性加载顺序：
+
+1. `current.md`
+2. `handoff.md`（如果存在）
+3. `tasks.md`（如果存在）
+4. 最高价值 summary（如果存在）
+5. 最新 archive evidence（如有需要）
+
+### 3. 启动 continuity-aware coding session
+
+`cclaude` 会完成本地状态初始化、记录 before-state，然后在项目上下文中启动 Claude Code。
+
+这仍然是当前唯一 fully supported 的 frontend path。
 
 推荐的 session 循环是：
 
@@ -116,9 +177,9 @@ my-project/
 2. 加载 `.claude/current.md`
 3. 延续既有架构与约束条件
 4. 当持久事实变化时更新 `current.md`
-5. 退出并让 Chronora 自动归档本次 session
+5. 退出并让 Chronora 归档本次 session
 
-### 3. 把 `current.md` 当作 live project truth
+### 4. 把 `current.md` 当作 live project truth
 
 一个健康的 `current.md` 应该保持紧凑、可执行、可续接。它记录的是下一次 session 必须立即当成真相的内容：
 
@@ -147,7 +208,7 @@ Keep auth logic in one module until the API stabilizes.
 2. Add integration coverage for happy-path login.
 ```
 
-### 4. 查看 session archive
+### 5. 查看 session archive
 
 每次运行都会在 `.claude/sessions/` 下创建一个 append-only archive。
 
@@ -164,7 +225,7 @@ Keep auth logic in one module until the API stabilizes.
 
 这让你可以轻量追踪 project state 如何演化，而不必把聊天记录当成主状态系统。
 
-### 5. 在下一次 session 里继续，而不是重新拼接上下文
+### 6. 在下一次 session 里继续，而不是重新拼接上下文
 
 第二天，或者下一次打开终端时，直接再运行：
 
@@ -226,14 +287,14 @@ your-project/
 
 ## Examples
 
-- [examples/basic-project/](examples/basic-project/README.md) — 更贴近真实使用的 v0.1 onboarding 示例，包含填充好的状态与 sample archive
+- [examples/basic-project/](examples/basic-project/README.md) — 更贴近真实使用的 onboarding 示例，包含填充好的状态与 sample archive
 - [examples/project-example/](examples/project-example/README.md) — 最小结构示例
 
 ## Current Scope
 
-Chronora 在 v0.1 中有意保持范围收敛。
+Chronora 当前有意保持范围收敛。
 
-它当前是：
+它现在是：
 
 - AI coding workflow continuity infrastructure
 - 面向 long-running development 的 deterministic state layer
@@ -244,7 +305,7 @@ Chronora 在 v0.1 中有意保持范围收敛。
 它目前还不是：
 
 - multi-frontend runtime support
-- 已经交付的 summary layer
+- 已交付的 summary layer
 - 跨 agent 的 task orchestration
 - 面向所有 coding tool 的 unified runtime
 - 完整的 AI workspace orchestration
@@ -259,8 +320,8 @@ Chronora 的近期方向包括：
 - unified runtime layer
 - AI workspace orchestration
 
-这些 roadmap items 描述的是项目方向，不是 v0.1 已经可用的功能。当前唯一 production path 仍然是 Claude Code。
+这些 roadmap 项目描述的是方向，不是当前已经交付的功能。当前生产路径仍然是 Claude Code。
 
 ## License
 
-Chronora 采用 [MIT License](LICENSE)。
+Chronora 基于 [MIT License](LICENSE) 发布。
